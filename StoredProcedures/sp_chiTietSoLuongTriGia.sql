@@ -1,0 +1,74 @@
+﻿-- 1. Ý nghĩa: Tạo báo cáo Bảng kê chi tiết số lượng – trị giá hàng nhập hoặc xuất theo từng tháng trong 1 khoảng thời gian
+-- 2. Cú pháp:
+CREATE PROCEDURE sp_chiTietSoLuongTriGia
+@ROLE nchar(8),
+@TYPE nchar(1),
+@DATEFROM datetime,
+@DATETO datetime
+AS
+BEGIN
+	IF (@ROLE = 'CONGTY') -- quyền Công ty
+	BEGIN
+		IF (@TYPE = 'N') -- Chọn phiếu nhập
+		BEGIN
+			SELECT FORMAT(NGAY, 'MM-yyyy') AS THANGNAM,
+					TENVT,
+					SUM(SOLUONG) AS TONGSOLUONG,
+					SUM(SOLUONG * DONGIA) AS TRIGIA
+			FROM (SELECT NGAY, MAPN
+					FROM LINK0.QLVT.dbo.PhieuNhap
+					WHERE NGAY BETWEEN @DATEFROM AND @DATETO) p,
+				(SELECT MAVT, TENVT FROM Vattu) vt,
+				( SELECT SOLUONG, DONGIA, MAPN,MAVT FROM LINK0.QLVT.dbo.CTPN) ct
+			WHERE p.MAPN = ct.MAPN AND vt.MAVT = ct.MAVT
+			GROUP BY FORMAT(NGAY,'MM-yyyy'), TENVT
+			ORDER BY FORMAT(NGAY,'MM-yyyy'), TENVT
+		END
+		ELSE -- Chọn phiếu xuất
+		BEGIN
+			SELECT FORMAT(NGAY, 'MM-yyyy') AS THANGNAM,
+					TENVT,
+					SUM(SOLUONG) AS TONGSOLUONG,
+					SUM(SOLUONG * DONGIA) AS TRIGIA
+			FROM (SELECT NGAY, MAPX
+					FROM LINK0.QLVT.dbo.PhieuXuat
+					WHERE NGAY BETWEEN @DATEFROM AND @DATETO) p,
+				(SELECT MAVT, TENVT FROM Vattu) vt,
+				( SELECT SOLUONG, DONGIA, MAPX,MAVT FROM dbo.CTPX) ct
+			WHERE p.MAPX = ct.MAPX AND vt.MAVT = ct.MAVT
+			GROUP BY FORMAT(NGAY,'MM-yyyy'), TENVT
+			ORDER BY FORMAT(NGAY,'MM-yyyy'), TENVT
+		END
+	END
+	ELSE -- Quyền CHINHANH hoặc USER
+	BEGIN
+		IF (@TYPE = 'N') -- Chọn phiếu nhập
+		BEGIN
+			SELECT FORMAT(NGAY, 'MM-yyyy') AS THANGNAM,
+					TENVT,
+					SUM(SOLUONG) AS TONGSOLUONG,
+					SUM(SOLUONG * DONGIA) AS TRIGIA
+			FROM (SELECT NGAY, MAPN
+					FROM dbo.PhieuNhap
+					WHERE NGAY BETWEEN @DATEFROM AND @DATETO) p,
+				(SELECT MAVT, TENVT FROM Vattu) vt,
+				( SELECT SOLUONG, DONGIA, MAPN,MAVT FROM dbo.CTPN) ct
+			WHERE p.MAPN = ct.MAPN AND vt.MAVT = ct.MAVT
+			GROUP BY FORMAT(NGAY,'MM-yyyy'), TENVT
+			ORDER BY FORMAT(NGAY,'MM-yyyy'), TENVT
+		END
+		SELECT FORMAT(NGAY, 'MM-yyyy') AS THANGNAM,
+					TENVT,
+					SUM(SOLUONG) AS TONGSOLUONG,
+					SUM(SOLUONG * DONGIA) AS TRIGIA
+			FROM (SELECT NGAY, MAPX
+					FROM PhieuXuat
+					WHERE NGAY BETWEEN @DATEFROM AND @DATETO) p,
+				(SELECT MAVT, TENVT FROM Vattu) vt,
+				( SELECT SOLUONG, DONGIA, MAPX, MAVT FROM CTPX) ct
+			WHERE p.MAPX = ct.MAPX AND vt.MAVT = ct.MAVT
+			GROUP BY FORMAT(NGAY,'MM-yyyy'), TENVT
+			ORDER BY FORMAT(NGAY,'MM-yyyy'), TENVT
+	END
+END
+-- 3. Cú pháp kiểm tra:
